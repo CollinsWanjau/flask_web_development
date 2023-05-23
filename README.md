@@ -26,3 +26,14 @@ to manually change hard-coded URLs.
 transparently.
 4. The generated paths are always absolute, avoiding unexpected behaviour
 of relative paths in browsers.
+
+## Static Files
+
+* To generate URLs for static files, use the special `static` endpoint
+name:
+```
+url_for('static', filename='style.css')
+```
+
+* This file has to be stored on the filesystem as `static/style.css`.
+
