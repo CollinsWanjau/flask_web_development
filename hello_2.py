@@ -1,13 +1,26 @@
 from flask import Flask, escape, url_for, render_template, send_from_directory, redirect, session, flash
+from markupsafe import escape
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from datetime import datetime
 from flask_wtf import FlaskForm as Form
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
+from hello_3 import db
 import os
 
+basedir = os.path.abspath(os.path.dirname(__file__))
+
 app = Flask(__name__, static_folder='templates/static')
+
+"""
+The db connection URI used for the default engine.It can be either a string
+or a SQLAlchemy URL instance.
+"""
+app.config['SQLALCHEMY_DATABASE_URI'] =\
+    'sqlite:///' + os.path.join(basedir, 'data.sqlite')
+app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
+db.init_app(app)
 moment = Moment(app)
 """
 The app.config dictionary is a general_purpose place to store configuration variables
@@ -28,19 +41,55 @@ class NameForm(Form):
     name = StringField('What is your name?', validators=[DataRequired()])
     submit = SubmitField('Submit')
 
+# Role model definition
+class Role(db.Model):
+    __tablename__ = 'roles'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), unique=True)
+
+    def __repr__(self):
+        return '<Role %r>' % self.name
+
+    # relationships
+    """The backref arg to db.relationship defines the reverse direction of
+    the relationship by adding a role attribute to the User model.This attr
+    can be used instead of role_id to access the Role model as an object
+    instead of a foreign key"""
+    users = db.relationship('User', backref='role', lazy='dynamic')
+
+# User model definition
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), unique=True, index=True)
+
+    def __repr__(self):
+        return '<User %r>' % self.username
+    # relationships
+    # the role_id column added is defined as a FK, and that establishes the
+    # relationship
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     # name = None
     form = NameForm()
     if form.validate_on_submit():
-        old_name = session.get('name')
-        if old_name is not None and old_name != form.name.data:
+        # old_name = session.get('name')
+        user = User.query.filter_by(username=form.name.data).first()
+        #if old_name is not None and old_name != form.name.data:
+        if user is None:
+            user = User(username = form.name.data)
+            db.session.add(user)
+            session['known'] = False
+        else:
+            session['known'] = True
             flash('Looks like you have changed your name!')
         session['name'] = form.name.data
         # name = form.name.data
         form.name.data = ''
         return redirect(url_for('index'))
-    return render_template('index.html', form=form, name=session.get('name'), current_time=datetime.utcnow())
+    return render_template('index.html', form=form, name=session.get('name'), known = session.get('known', False), current_time=datetime.utcnow())
 
 @app.route('/login')
 def login():
