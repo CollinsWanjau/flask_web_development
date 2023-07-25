@@ -6,7 +6,8 @@ from datetime import datetime
 from flask_wtf import FlaskForm as Form
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
-from hello_3 import db
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 import os
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -20,8 +21,19 @@ or a SQLAlchemy URL instance.
 app.config['SQLALCHEMY_DATABASE_URI'] =\
     'sqlite:///' + os.path.join(basedir, 'data.sqlite')
 app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
-db.init_app(app)
+
+# Initialize FLask extensions
+# db.init_app(app)
 moment = Moment(app)
+db = SQLAlchemy(app)
+migrate = Migrate(app, db, directory='migrations')
+
+# Create the Manager instance
+# manager = Manager(app)
+
+# Add the MigrateCommand to the manager
+# manager.add_command('db', MigrateCommand)
+
 """
 The app.config dictionary is a general_purpose place to store configuration variables
 used by the framework
