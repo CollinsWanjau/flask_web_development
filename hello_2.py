@@ -70,6 +70,11 @@ class User(db.Model):
     # relationship
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
 
+# Function to set up the shell context
+@app.shell_context_processor
+def make_shell_context():
+    return {'app': app, 'db': db, 'User': User, 'Role': Role}
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     # name = None
