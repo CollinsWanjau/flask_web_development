@@ -8,11 +8,14 @@ from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_mail import Mail, Message
 import os
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__, static_folder='templates/static')
+
+
 
 """
 The db connection URI used for the default engine.It can be either a string
@@ -28,11 +31,25 @@ moment = Moment(app)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db, directory='migrations')
 
+
 # Create the Manager instance
 # manager = Manager(app)
 
 # Add the MigrateCommand to the manager
 # manager.add_command('db', MigrateCommand)
+
+# Flask-Mail configuration for Gmail
+app.config['MAIL_SERVER'] = 'smtp.googlemail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['IMAGINESTUDIOS_MAIL_SUBJECT_PREFIX'] = '[Imagine]'
+app.config['IMAGINESTUDIOS_MAIL_SENDER'] = 'Imagine Admin <tripperskripper@gmail.com>'
+app.config['IMAGINE_ADMIN'] = os.environ.get('IMAGINE_ADMIN')
+
+# Create a Flask-Mail object
+mail = Mail(app)
 
 """
 The app.config dictionary is a general_purpose place to store configuration variables
@@ -87,6 +104,14 @@ class User(db.Model):
 def make_shell_context():
     return {'app': app, 'db': db, 'User': User, 'Role': Role}
 
+# Email support
+def send_email(to, subject, template, **kwargs):
+    msg = Message(app.config['IMAGINESTUDIOS_MAIL_SUBJECT_PREFIX'] + subject,
+                  sender=app.config['IMAGINESTUDIOS_MAIL_SENDER'], recipients=[to])
+    msg.body = render_template(template + '.txt', **kwargs)
+    msg.html = render_template(template + '.html', **kwargs)
+    mail.send(msg)
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     # name = None
@@ -99,6 +124,9 @@ def index():
             user = User(username = form.name.data)
             db.session.add(user)
             session['known'] = False
+            if app.config['IMAGINE_ADMIN']:
+                send_email(app.config['IMAGINE_ADMIN'], 'New User',
+                           'mail/new_user', user=user)
         else:
             session['known'] = True
             flash('Looks like you have changed your name!')
