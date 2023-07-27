@@ -1,0 +1,13 @@
+{# The extends directive declares that this template derives base,html
+		This directive is follwed by new definitions for the 3 blocks defined
+		in the base template #}
+{% extends "base.html" %}
+{% block title %}Imagine_Studios{% endblock %}
+{% block head %}
+<link rel="shortcut icon" href="{{ url_for('static', filename = 'favicon.ico') }}" ty
+pe="image/x-icon">
+<link rel="icon" href="{{ url_for('static', filename = 'favicon.ico') }}" type="image
+/x-icon">	
+	{% endblock %}
+{% block body %}
+{% endblock %}

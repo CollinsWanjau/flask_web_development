@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!--Include the Moment.js library-->
+    {{moment.include_moment()}}
+</head>
+
+<body>
+    <h1>Current Time</h1>
+    <p>{{ moment(current_time).format('MMMM Do YYYY, h:mm:ss a')}}</p>
+    <p>That was {{ moment(current_time).fromNow(refresh=True) }}</p>
+</body>
+
+</html>
