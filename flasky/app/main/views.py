@@ -5,6 +5,7 @@ from .forms import NameForm
 from .. import db
 from ..models import User
 from flask import flash, Blueprint
+from flask_login import login_required, current_user
 
 # main = Blueprint('main', __name__)
 
@@ -32,7 +33,7 @@ def index():
         form.name.data = ''
         return redirect(url_for('.index'))
     return render_template('index.html',
-                           form=form, name=session.get('name'),
+                           form=form, name=current_user.username,
                            known = session.get('known', False),
                            current_time=datetime.utcnow())
 
@@ -53,6 +54,17 @@ with app.test_request_context():
     print(url_for('profile', username='John Doe', _external=True))
     print(url_for('static', filename='templates'))
 """
+
+@main.route('/secret')
+@login_required
+def secret():
+    return 'Only authenticated users are allowed!'
+
+@main.route('/protected')
+@login_required
+def protected_page():
+    return render_template('index_3.html')
+
 @main.route("/static/favicon.ico")
 def fav():
     print(os.path.join(app.root_path, 'templates/static'))
