@@ -5,6 +5,12 @@ from flask_migrate import Migrate
 from flask_mail import Mail, Message
 from flask_sqlalchemy import SQLAlchemy
 from config import config
+from flask_login import LoginManager
+
+# flask-login initialization
+login_manager = LoginManager()
+login_manager.session_protection = 'strong'
+login_manager.login_view = 'auth.login'
 
 bootstrap = Bootstrap()
 mail = Mail()
@@ -24,6 +30,7 @@ def create_app(config_name='default'):
     
 
     # Initialize extensions
+    login_manager.init_app(app)
     bootstrap.init_app(app)
     mail.init_app(app)
     moment.init_app(app)

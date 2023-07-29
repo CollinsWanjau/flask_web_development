@@ -1,6 +1,8 @@
 from werkzeug.security import generate_password_hash, check_password_hash
-
+from flask_login import UserMixin
 from app import db
+from . import login_manager
+
 # Role model definition
 class Role(db.Model):
     __tablename__ = 'roles'
@@ -18,10 +20,16 @@ class Role(db.Model):
     users = db.relationship('User', backref='role', lazy='dynamic')
 
 # User model definition
-class User(db.Model):
+class User(UserMixin, db.Model):
     __tablename__ = 'users'
+
+    # Updates to the user model to support user logins
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, index=True)
+    email = db.Column(db.String(64), unique=True, index=True)
+    password_hash = db.Column(db.String(128))
+    role_id = db.column(db.Integer, db.ForeignKey('roles.id'))
+
 
     def __repr__(self):
         return '<User %r>' % self.username
@@ -66,4 +74,13 @@ class User(db.Model):
         """
         return check_password_hash(self.password_hash, password)
 
-
+# User loader callback function
+@login_manager.user_loader
+def load_user(user_id):
+    """
+    Flask requires the app to set up a callback function that loads a user,
+    given the identifier.
+    The function receives a user identifier as a Unicode string.The return
+    value of the function must be the user object if available or None.
+    """
+    return User.query.get(int(user_id))
