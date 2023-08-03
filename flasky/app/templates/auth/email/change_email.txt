@@ -1,0 +1,11 @@
+Dear {{ user.username }},
+
+To confirm your new email address click on the follwoing link:
+
+{{ url_for('auth.change_email', token=token, _external=True) }}
+
+Sincerely,
+
+The Imagine_Studios Team
+
+Note: replies to this email address are not monitored
