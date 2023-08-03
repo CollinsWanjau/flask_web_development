@@ -2,6 +2,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from app import db
 from . import login_manager
+from itsdangerous import URLSafeTimedSerializer as Serializer
+from flask import current_app
+from . import db
 
 # Role model definition
 class Role(db.Model):
@@ -73,6 +76,70 @@ class User(UserMixin, db.Model):
         The function below returns true if the hashed passwords match
         """
         return check_password_hash(self.password_hash, password)
+
+    # User account confirmation
+    confirmed = db.Column(db.Boolean, default=False)
+
+    def generate_confirmation_token(self):
+        s = Serializer(current_app.config['SECRET_KEY'], salt="activate")
+        return s.dumps({'confirm': self.id})
+
+    def confirm(self, token):
+        s = Serializer(current_app.config['SECRET_KEY'], salt="activate")
+        try:
+            data = s.loads(token)
+        except:
+            return False
+        if data.get('confirm') != self.id:
+            return False
+        self.confirmed = True
+        db.session.add(self)
+        return True
+
+    # password reset
+    def generate_reset_token(self):
+        """Generates a password reset token by serializing a dictionary with
+        the user's ID and then converts the serialized token to a UTF.This token
+        can be used to verify the user's identity when they try to reset their
+        password.
+        """
+        s = Serializer(current_app.config['SECRET_KEY'])
+        return s.dumps({'reset': self.id})
+
+
+    @staticmethod
+    def reset_password(token, new_password):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token)
+        except:
+            return False
+        user = User.query.get(data.get('reset'))
+        if user is None:
+            return False
+        user.password = new_password
+        db.session.add(user)
+        return True
+
+    def generate_email_change_token(self, new_email):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        return s.dumps(
+                {'change_email': self.id, 'new_email': new_email})
+
+    def change_email(self, token):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token)
+        except:
+            return False
+        new_email = data.get('new_email')
+        if new_email is None:
+            return False
+        if self.query.filter_by(email=new_email).first() is not None:
+            return False
+        self.email = new_email
+        db.session.add(self)
+        return True
 
 # User loader callback function
 @login_manager.user_loader
