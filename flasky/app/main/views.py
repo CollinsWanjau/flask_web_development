@@ -4,14 +4,16 @@ from . import main
 from .forms import NameForm
 from .. import db
 from ..models import User
-from flask import flash, Blueprint
+from flask import flash, Blueprint, send_from_directory
 from flask_login import login_required, current_user
+import os
+from ..email import send_email
 
 # main = Blueprint('main', __name__)
 
 @main.route('/', methods=['GET', 'POST'])
 def index():
-    # name = None
+    name = None
     form = NameForm()
     if form.validate_on_submit():
         # old_name = session.get('name')
@@ -33,7 +35,8 @@ def index():
         form.name.data = ''
         return redirect(url_for('.index'))
     return render_template('index.html',
-                           form=form, name=current_user.username,
+                           form=form, 
+                           name=current_user.username if current_user.is_authenticated else None,
                            known = session.get('known', False),
                            current_time=datetime.utcnow())
 
@@ -67,5 +70,5 @@ def protected_page():
 
 @main.route("/static/favicon.ico")
 def fav():
-    print(os.path.join(app.root_path, 'templates/static'))
-    return send_from_directory(app.static_folder, 'favicon.ico')
+    print(os.path.join(current_app.root_path, 'templates/static'))
+    return send_from_directory(current_app.static_folder, 'favicon.ico')
