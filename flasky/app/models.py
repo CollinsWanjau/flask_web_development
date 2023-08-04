@@ -1,16 +1,38 @@
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import UserMixin
+from flask_login import UserMixin, AnonymousUserMixin
 from app import db
 from . import login_manager
 from itsdangerous import URLSafeTimedSerializer as Serializer
 from flask import current_app
 from . import db
 
+class Permission:
+    FOLLOW = 0x01
+    COMMENT = 0X02
+    WRITE_ARTICLES = 0x04
+    MODERATE_COMMENTS = 0x08
+    ADMINISTER = 0x80
+
 # Role model definition
 class Role(db.Model):
+    # tablename is used to override the table name
     __tablename__ = 'roles'
+
+    # The types of the column are the first arg to Column
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), unique=True)
+    # an improved version of roles permissions
+    """db.column: is a class in SQLA that represents a column in a db table
+        db.Boolean: specifies the column should be of type Boolean, meaning
+        it can only have two values
+        index=True: specifies that an index should be created for this column
+        which can improve query perfomance"""
+    default = db.Column(db.Boolean, default=False, index=True)
+
+    """This field is an integer that will be used as bit flags.Each task
+        will be assigned a bit position, and for each role the tasks that
+        are allowed for that role will bits set to 1."""
+    permissions = db.Column(db.Integer)
 
     def __repr__(self):
         return '<Role %r>' % self.name
@@ -22,6 +44,31 @@ class Role(db.Model):
     instead of a foreign key"""
     users = db.relationship('User', backref='role', lazy='dynamic')
 
+    # Create roles in the database
+    @staticmethod
+    def insert_roles():
+        """This function does not directly create new role objects.Instead, it
+            tries to find existing roles by name and update those.
+            To add a new role or change the permission assignments for a role,
+            change the roles array and return the function."""
+        roles = {
+            'User': (Permission.FOLLOW |
+                     Permission.COMMENT |
+                     Permission.WRITE_ARTICLES, True),
+            'Moderator': (Permission.FOLLOW |
+                          Permission.COMMENT |
+                          Permission.WRITE_ARTICLES, False),
+            'Administrator': (0xff, False)
+        }
+        for r in roles:
+            role = Role.query.filter_by(name=r).first()
+            if role is None:
+                role = Role(name=r)
+            role.permissions = roles[r][0]
+            role.default = roles[r][1]
+            db.session.add(role)
+        db.session.commit()
+
 # User model definition
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -31,6 +78,8 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), unique=True, index=True)
     email = db.Column(db.String(64), unique=True, index=True)
     password_hash = db.Column(db.String(128))
+
+    # This is a one-to-many relationship as ForeignKey is used
     role_id = db.column(db.Integer, db.ForeignKey('roles.id'))
 
 
@@ -43,6 +92,19 @@ class User(UserMixin, db.Model):
 
     # Password hashing in User model
     password_hash = db.Column(db.String(128))
+
+    # Define a default role for users
+    def __init__(self, **kwargs):
+        """kwargs allows the __init__() method to accept an arbitrary number
+            of kwargs, which can be used to set the attribute of the user
+            object.This is useful wh as it allows any additional kwargs
+            to be passed to the parent constructor."""
+        super(User, self).__init__(**kwargs)
+        if self.role is None:
+            if self.email == current_app.config['IMAGINE_ADMIN']:
+                self.role = Role.query.filter_by(permissions=0xff).first()
+            if self.role is None:
+                self.role = Role.query.filter_by(default=True).first()
 
     """This decorator is used above the method def to create a read-only
     property"""
@@ -140,6 +202,27 @@ class User(UserMixin, db.Model):
         self.email = new_email
         db.session.add(self)
         return True
+
+    # Evaluate whether a user has a given permission
+    def can(self, permissions):
+        """A helper method to the user model that checks whether a given
+            permission is present."""
+        return self.role is not None and \
+            (self.role.permissions & permissions) == permissions
+
+    def is_administrator(self):
+        return self.can(Permission.ADMINISTER)
+
+
+# Evaluate whether a user has a given permission
+class AnonymousUser(AnonymousUserMixin):
+    def can(self, permissions):
+        return False
+
+    def is_administrator(self):
+        return False
+
+login_manager.anonymous_user = AnonymousUser
 
 # User loader callback function
 @login_manager.user_loader
