@@ -44,6 +44,11 @@ class Role(db.Model):
     instead of a foreign key"""
     users = db.relationship('User', backref='role', lazy='dynamic')
 
+    def __init__(self, **kwargs):
+        super(Role, self).__init__(**kwargs)
+        if self.permissions is None:
+            self.permissions = 0
+
     # Create roles in the database
     @staticmethod
     def insert_roles():
