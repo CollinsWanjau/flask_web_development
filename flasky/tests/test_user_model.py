@@ -1,4 +1,6 @@
 import unittest
+import time
+from datetime import datetime, timedelta
 from app.models import User, AnonymousUser, Role, Permission
 from app import create_app, db
 
@@ -111,3 +113,27 @@ class UserModelTestCase(unittest.TestCase):
     def test_anonymous_user(self):
         u = AnonymousUser()
         self.assertFalse(u.can(Permission.FOLLOW))
+
+    def test_timestamps(self):
+        """Checks whether the timestamp of member_since was set accurately
+        and last_seen"""
+        u = User(password='cat')
+        db.session.add(u)
+        db.session.commit()
+
+        time_difference_member_since = datetime.utcnow() - u.member_since
+        time_difference_last_seen = datetime.utcnow() - u.last_seen
+
+        self.assertTrue((time_difference_member_since.total_seconds() < 3))
+        self.assertTrue((time_difference_last_seen.total_seconds() < 3))
+
+    def test_ping(self):
+        """This assertion checks whether the las_seen is greater than
+        last_seen_before"""
+        u = User(password='cat')
+        db.session.add(u)
+        db.session.commit()
+        time.sleep(2)
+        last_seen_before = u.last_seen
+        u.ping()
+        self.assertTrue(u.last_seen > last_seen_before)
