@@ -8,6 +8,7 @@ from flask import flash, Blueprint, send_from_directory
 from flask_login import login_required, current_user
 import os
 from ..email import send_email
+# from decorators import admin_required, permission_required
 
 # main = Blueprint('main', __name__)
 
@@ -44,11 +45,19 @@ def index():
 def login():
     return 'login'
 
+"""
 @main.route('/user/<username>')
 def profile(username):
-    return render_template('user.html', username=username)
+    return render_template('user.html', user=user)
     # return '{}\'s profile'.format(escape(username))
-
+"""
+@main.route('/user/<username>')
+def user(username):
+    """the username given in the url is searched in the db"""
+    user = User.query.filter_by(username=username).first()
+    if user is None:
+        abort(404)
+    return render_template('user.html', user=user)
 """
 with app.test_request_context():
     print(url_for('index', _external=True))
@@ -72,3 +81,17 @@ def protected_page():
 def fav():
     print(os.path.join(current_app.root_path, 'templates/static'))
     return send_from_directory(current_app.static_folder, 'favicon.ico')
+
+"""
+@main.route('/admin')
+@login_required
+@admin_required
+def for_admins_only():
+    return "For administrators!"
+
+@main.route('/moderator')
+@login_required
+@permission_required(Permission.MODERATE_COMMENTS)
+def for_moderators_only():
+    return "For comment moderators!"
+"""
