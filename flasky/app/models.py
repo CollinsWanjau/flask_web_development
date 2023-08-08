@@ -5,6 +5,7 @@ from . import login_manager
 from itsdangerous import URLSafeTimedSerializer as Serializer
 from flask import current_app
 from . import db
+from datetime import datetime
 
 class Permission:
     FOLLOW = 0x01
@@ -86,6 +87,13 @@ class User(UserMixin, db.Model):
 
     # This is a one-to-many relationship as ForeignKey is used
     role_id = db.column(db.Integer, db.ForeignKey('roles.id'))
+
+    # User information fields
+    name = db.Column(db.String(64))
+    location = db.Column(db.String(64))
+    about_me = db.Column(db.Text())
+    member_since = db.Column(db.DateTime(), default=datetime.utcnow)
+    last_seen = db.Column(db.DateTime(), default=datetime.utcnow)
 
 
     def __repr__(self):
@@ -217,6 +225,14 @@ class User(UserMixin, db.Model):
 
     def is_administrator(self):
         return self.can(Permission.ADMINISTER)
+
+    def ping(self):
+        """
+        This method is used to update using last_seen field which is
+        refreshed every-time
+        """
+        self.last_seen = datetime.utcnow()
+        db.session.add(self)
 
 
 # Evaluate whether a user has a given permission
