@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import render_template, session, redirect, url_for, current_app
+from flask import render_template, session, redirect, url_for, current_app, request
 from . import main
 from .forms import NameForm, EditProfileForm, EditProfileAdminForm, PostForm 
 from .. import db
@@ -27,10 +27,17 @@ def index():
             return redirect(url_for('.index'))
         # form.body.data = 'This is my post.'
         posts = Post.query.order_by(Post.timestamp.desc()).all()
-        return render_template('index.html', form=form, posts=posts)
+        # Paginate the blog list
+        page = request.args.get('page', 1, type=int)
+        pagination = Post.query.order_by(Post.timestamp.desc()).paginate(page=page, per_page=current_app.config['IMAGINE_POSTS_PER_PAGE'],
+        error_out=False)
+        posts = pagination.items
+        return render_template('index.html', form=form, posts=posts,
+            pagination=pagination)
     else:
         return redirect(url_for('auth.login'))
-"""
+    
+    """
     if form.validate_on_submit():
         # old_name = session.get('name')
         user = User.query.filter_by(username=form.name.data).first()
@@ -75,7 +82,12 @@ def user(username):
         abort(404)
     # posts = user.posts.order_by(Post.timestamp.desc()).all()
     posts = Post.query.filter_by(author=user).order_by(Post.timestamp.desc()).all()
-    return render_template('user.html', user=user, posts=posts)
+    # Paginate blog post list
+    page = request.args.get('page', 1, type=int)
+    pagination = Post.query.order_by(Post.timestamp.desc()).paginate(page=page, per_page=current_app.config['IMAGINE_POSTS_PER_PAGE'],
+        error_out=False)
+    posts = pagination.items
+    return render_template('user.html', user=user, posts=posts, pagination=pagination)
 """
 with app.test_request_context():
     print(url_for('index', _external=True))
