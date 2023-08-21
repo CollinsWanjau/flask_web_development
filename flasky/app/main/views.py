@@ -1,9 +1,9 @@
 from datetime import datetime
 from flask import render_template, session, redirect, url_for, current_app
 from . import main
-from .forms import NameForm, EditProfileForm
+from .forms import NameForm, EditProfileForm, EditProfileAdminForm, PostForm 
 from .. import db
-from ..models import User
+from ..models import User, Permission, Post, Role
 from flask import flash, Blueprint, send_from_directory
 from flask_login import login_required, current_user
 import os
@@ -14,8 +14,23 @@ from ..decorators import admin_required, permission_required
 
 @main.route('/', methods=['GET', 'POST'])
 def index():
-    name = None
-    form = NameForm()
+    # name = None
+    # form = NameForm()
+    form = PostForm()
+    if current_user.is_authenticated:
+        if form.validate_on_submit():
+            # the database needs a real user object, which is obtained by _get_current
+            post = Post(body=form.body.data,
+                        author=current_user._get_current_object())
+            db.session.add(post)
+            db.session.commit()
+            return redirect(url_for('.index'))
+        # form.body.data = 'This is my post.'
+        posts = Post.query.order_by(Post.timestamp.desc()).all()
+        return render_template('index.html', form=form, posts=posts)
+    else:
+        return redirect(url_for('auth.login'))
+"""
     if form.validate_on_submit():
         # old_name = session.get('name')
         user = User.query.filter_by(username=form.name.data).first()
@@ -39,8 +54,9 @@ def index():
                            form=form, 
                            name=current_user.username if current_user.is_authenticated else None,
                            known = session.get('known', False),
+                           post_form=post_form, posts=posts,
                            current_time=datetime.utcnow())
-
+"""
 @main.route('/login')
 def login():
     return 'login'
@@ -57,7 +73,9 @@ def user(username):
     user = User.query.filter_by(username=username).first()
     if user is None:
         abort(404)
-    return render_template('user.html', user=user)
+    # posts = user.posts.order_by(Post.timestamp.desc()).all()
+    posts = Post.query.filter_by(author=user).order_by(Post.timestamp.desc()).all()
+    return render_template('user.html', user=user, posts=posts)
 """
 with app.test_request_context():
     print(url_for('index', _external=True))
