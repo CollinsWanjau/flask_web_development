@@ -113,6 +113,14 @@ class Post(db.Model):
         target.body_html = bleach.linkify(bleach.clean(
             markdown(value, output_format='html'),
             tags=allowed_tags, strip=True))
+# The follows association table as a model
+class Follow(db.Model):
+    __tablename__ = 'follows'
+    follower_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+                            primary_key=True)
+    followed_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+                            primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 # User model definition
 class User(UserMixin, db.Model):
@@ -138,6 +146,18 @@ class User(UserMixin, db.Model):
     last_seen = db.Column(db.DateTime(), default=datetime.utcnow)
     #Gravatar URL generation with caching of MD5 hashes
     avatar_hash = db.Column(db.String(32))
+
+    # a m-to-m relation implemented as two o-t-m relationships
+    followed = db.relationship('Follow',
+                               foreign_keys=[Follow.follower_id],
+                               backref=db.backref('follower', lazy='joined'),
+                               lazy='dynamic',
+                               cascade='all, delete-orphan')
+    followers = db.relationship('Follow',
+                                foreign_keys=[Follow.followed_id],
+                                backref=db.backref('followed', lazy='joined'),
+                                lazy='dynamic',
+                                cascade='all, delete-orphan')
 
 
     def __repr__(self):
@@ -318,6 +338,28 @@ class User(UserMixin, db.Model):
             except IntegrityError:
                 db.session.rollback()
 
+    # Followers helper methods
+    def follow(self, user):
+        if not self.is_following(user):
+            f = Follow(followed=user)
+            self.followed.append(f)
+
+    def unfollow(self, user):
+        f = self.followed.filter_by(followed_id=user.id).first()
+        if f:
+            self.followed.remove(f)
+
+    def is_following(self, user):
+        if user.id is None:
+            return False
+        return self.followed.filter_by(
+            followed_id=user.id).first() is not None
+
+    def is_followed_by(self, user):
+        if user.id is None:
+            return False
+        return self.followers.filter_by(
+            follower_id=user.id).first() is not None
 
 # Evaluate whether a user has a given permission
 class AnonymousUser(AnonymousUserMixin):
