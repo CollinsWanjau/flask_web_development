@@ -364,6 +364,16 @@ class User(UserMixin, db.Model):
         return self.followers.filter_by(
             follower_id=user.id).first() is not None
 
+    @@property
+    def followed_post(self):
+        """Obtain follwed posts."""
+        return Post.query.join(Follow, Follow.followed_id == Post.author_id)\
+            .filter(Follow.follower_id == self.id)
+    
+    foo.setter
+    def foo(self, value):
+        self._foo = value
+
 # Evaluate whether a user has a given permission
 class AnonymousUser(AnonymousUserMixin):
     def can(self, permissions):
