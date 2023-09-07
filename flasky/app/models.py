@@ -122,6 +122,11 @@ class Follow(db.Model):
                             primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # follower = db.relationship('User', back_populates='followed',
+     #                          foreign_keys=[follower_id])
+    #followed = db.relationship('User', back_populates='followers',
+     #                          foreign_keys=[followed_id])
+
 # User model definition
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -158,7 +163,19 @@ class User(UserMixin, db.Model):
                                 backref=db.backref('followed', lazy='joined'),
                                 lazy='dynamic',
                                 cascade='all, delete-orphan')
+    
+    followed_posts = db.relationship('Post',
+                                     secondary=Follow.__table__,
+                                     primaryjoin=(Follow.follower_id == id),
+                                     secondaryjoin=(Post.author_id == Follow.followed_id),
+                                     order_by=Post.timestamp.desc(),
+                                     lazy='dynamic',
+                                     overlaps="followed, followers, follower")
 
+    #followed = db.relationship('Follow', back_populates='follower',
+     #                          lazy='dynamic')
+    #followers = db.relationship('Follow', back_populates='followed',
+     #                           lazy='dynamic')
 
     def __repr__(self):
         return '<User %r>' % self.username
@@ -169,6 +186,15 @@ class User(UserMixin, db.Model):
 
     # Password hashing in User model
     password_hash = db.Column(db.String(128))
+
+    # make users their own followers reusable
+    @staticmethod
+    def add_self_follows():
+        for user in User.query.all():
+            if not user.is_following(user):
+                user.follow(user)
+                db.session.add(user)
+                db.session.commit()
 
     # Define a default role for users
     def __init__(self, **kwargs):
@@ -185,6 +211,8 @@ class User(UserMixin, db.Model):
         # GRAVATAR url generation with caching of md5
         if self.email is not None and self.avatar_hash is None:
             self.avatar_hash = self.gravatar_hash()
+        # Make users their own followers
+        self.follow(self)
 
     """This decorator is used above the method def to create a read-only
     property"""
@@ -341,7 +369,7 @@ class User(UserMixin, db.Model):
     # Followers helper methods
     def follow(self, user):
         if not self.is_following(user):
-            f = Follow(followed=user)
+            # f = Follow(followed=user)
             # self.followed.append(f)
             f = Follow(follower=self, followed=user)
             db.session.add(f)
