@@ -17,6 +17,7 @@ class Config:
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     IMAGINE_POSTS_PER_PAGE = os.environ.get('IMAGINE_POSTS_PER_PAGE')
     IMAGINE_FOLLOWERS_PER_PAGE = 50
+    IMAGINE_COMMENTS_PER_PAGE = 30
     """
     Configuration classes define a init_app() class method that takes an
     application instance as an arg
