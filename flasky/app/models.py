@@ -62,14 +62,15 @@ class Role(db.Model):
             To add a new role or change the permission assignments for a role,
             change the roles array and return the function."""
         roles = {
-            'User': (Permission.FOLLOW |
+            'User': [Permission.FOLLOW |
                      Permission.COMMENT |
-                     Permission.WRITE_ARTICLES, True),
-            'Moderator': (Permission.FOLLOW |
+                     Permission.WRITE_ARTICLES],
+            'Moderator': [Permission.FOLLOW |
                           Permission.COMMENT |
-                          Permission.WRITE_ARTICLES, False),
+                          Permission.WRITE_ARTICLES],
             'Administrator': (0xff, False)
         }
+        '''
         for r in roles:
             role = Role.query.filter_by(name=r).first()
             if role is None:
@@ -78,6 +79,32 @@ class Role(db.Model):
             role.default = roles[r][1]
             db.session.add(role)
         db.session.commit()
+        '''
+        default_role = 'User'
+        for r in roles:
+            role = Role.query.filter_by(name=r).first()
+            if role is None:
+                role = Role(name=r)
+            role.reset_permissions()
+            for perm in roles[r]:
+                role.add_permission(perm)
+            role.default = (role.name == default_role)
+            db.session.add(role)
+        db.session.commit()
+
+    def add_permission(self, perm):
+        if not self.has_permission(perm):
+            self.permissions += perm
+
+    def remove_permission(self, perm):
+        if self.has_permission(perm):
+            self.permissions -= perm
+
+    def reset_permissions(self):
+        self.permissions = 0
+
+    def has_permission(self, perm):
+        return self.permissions & perm == perm        
 
 # Post model
 class Post(db.Model):
@@ -87,6 +114,8 @@ class Post(db.Model):
     body_html = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    # comments attribute
+    comments = db.relationship('Comment', backref='post', lazy='dynamic')
 
     
     # Generate fake users and blog posts
@@ -126,6 +155,27 @@ class Follow(db.Model):
      #                          foreign_keys=[follower_id])
     #followed = db.relationship('User', back_populates='followers',
      #                          foreign_keys=[followed_id])
+
+# class comments
+class Comment(db.Model):
+    __tablename__ = 'comments'
+    id = db.Column(db.Integer, primary_key=True)
+    body = db.Column(db.Text)
+    body_html = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    disabled = db.Column(db.Boolean)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'))
+
+    @staticmethod
+    def on_changed_body(target, value, oldvalue, initiator):
+        allowed_tags = ['a', 'abbr', 'acronym', 'b', 'code', 'em', 'i',
+                        'strong']
+        target.body_html = bleach.linkify(bleach.clean(
+            markdown(value, output_format='html'),
+            tags=allowed_tags, strip=True))
+
+db.event.listen(Comment.body, 'set', Comment.on_changed_body)
 
 # User model definition
 class User(UserMixin, db.Model):
@@ -171,6 +221,8 @@ class User(UserMixin, db.Model):
                                      order_by=Post.timestamp.desc(),
                                      lazy='dynamic',
                                      overlaps="followed, followers, follower")
+    # comments attribute
+    comments = db.relationship('Comment', backref='author', lazy='dynamic')
 
     #followed = db.relationship('Follow', back_populates='follower',
      #                          lazy='dynamic')
@@ -397,7 +449,8 @@ class User(UserMixin, db.Model):
         """Obtain follwed posts."""
         return Post.query.join(Follow, Follow.followed_id == Post.author_id)\
             .filter(Follow.follower_id == self.id)
-     
+
+
 # Evaluate whether a user has a given permission
 class AnonymousUser(AnonymousUserMixin):
     def can(self, permissions):
