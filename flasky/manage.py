@@ -5,7 +5,7 @@ from app import create_app, db
 from app.models import User, Role
 from flask.cli import FlaskGroup
 from flask_migrate import Migrate
-from app.models import User, Role
+from app.models import User, Role, Follow, Post, Comment, Permission
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 cli = FlaskGroup(create_app=create_app)
@@ -16,7 +16,8 @@ migrate = Migrate(app, db, directory='migrations', command='migrate')
 # Function to set up the shell context
 @app.shell_context_processor
 def make_shell_context():
-    return {'app': app, 'db': db, 'User': User, 'Role': Role}
+    return {'app': app, 'db': db, 'User': User, 'Role': Role, 'Permission': Permission,
+            'Post': Post, 'follow':follow, 'Comment':Comment}
 
 # Add Flask-Migrate commands to the cli
 # cli.add_command('migrate-db', MigrateCommand)
