@@ -2,9 +2,9 @@ from datetime import datetime
 from flask import render_template, session, redirect, url_for, current_app, request,\
     make_response
 from . import main
-from .forms import NameForm, EditProfileForm, EditProfileAdminForm, PostForm 
+from .forms import NameForm, EditProfileForm, EditProfileAdminForm, PostForm, CommentForm 
 from .. import db
-from ..models import User, Permission, Post, Role
+from ..models import User, Permission, Post, Role, Comment
 from flask import flash, Blueprint, send_from_directory
 from flask_login import login_required, current_user
 import os
@@ -188,10 +188,36 @@ def edit_profile_admin(id):
     return render_template('edit_profile.html', form=form, user=user)
 
 # Permanent links to post
-@main.route('/post/<int:id>')
+@main.route('/post/<int:id>', methods=['GET', 'POST'])
 def post(id):
     post = Post.query.get_or_404(id)
-    return render_template('post.html', posts=[post])
+    # Blog post comments support
+    form = CommentForm()
+    if current_user.is_authenticated:
+        if form.validate_on_submit():
+            # the _get_current_object returns the  actual User object
+            comment = Comment(body=form.body.data,
+                              post=post,
+                              author=current_user._get_current_object())
+            db.session.add(comment)
+            db.session.commit()
+            flash('Your comment has been published.')
+            return redirect(url_for('.post', id=post.id, page=-1))
+            # handles pagination of comments, by first getting the current page
+            # number from the url string
+        page = request.args.get('page', 1, type=int)
+        # if page is -1, it sets the page number to the last page of comments
+        if page == -1:
+            page = (post.comments.count()- 1) // \
+                current_app.config['IMAGINE_COMMENTS_PER_PAGE'] + 1
+        pagination = post.comments.order_by(Comment.timestamp.asc()).paginate(page=page, per_page=current_app.config['IMAGINE_COMMENTS_PER_PAGE'],
+            error_out=False)
+        comments = pagination.items
+        return render_template('post.html', posts=[post], comments=comments,
+                               pagination=pagination, form=form)
+    else:
+        return redirect(url_for('auth.login'))
+
 
 # Edit blog post route
 @main.route('/edit/<int:id>', methods=['GET', 'POST'])
