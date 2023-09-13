@@ -6,6 +6,7 @@ from flask_mail import Mail, Message
 from flask_sqlalchemy import SQLAlchemy
 from config import config
 from flask_login import LoginManager
+from flask_pagedown import PageDown
 
 # flask-login initialization
 login_manager = LoginManager()
@@ -17,6 +18,7 @@ mail = Mail()
 moment = Moment()
 db = SQLAlchemy()
 migrate = Migrate()
+pagedown = PageDown()
 
 def create_app(config_name='default'):
     app = Flask(__name__)
@@ -36,6 +38,8 @@ def create_app(config_name='default'):
     moment.init_app(app)
     db.init_app(app)
     migrate.init_app(app, db)
+    # Flask-pageDown Initialization
+    pagedown.init_app(app)
 
     # attach routes and custom error pagaes here
 
