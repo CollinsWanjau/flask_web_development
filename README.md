@@ -1,6 +1,11 @@
+# SocialScribe
+
+The purpose of a social media blog app is to provide a platform for bloggers to connect share, and inspire each other through a dynamic social media platform. The app allows users to create and share blog posts, follow other users, and engage with content through comments.The app's features and user experiance should be designed to promote community building and engagement, and to provide a space where bloggers can connect with other like-minded individuals and build a following around their interests. The app also prioritizes security and user privacy, and provide tools for managing user accounts and content.Overall, the purpose of a social media blog app is to provide a platform for bloggers to create and share content, build a community around their interests, and connect with other like-minded individuals.
+
+
 # Flask
 
-## Variable Rules
+## Variable Rules!
 * The `{{ name }}` construct used in the template refs, a variable, a
 special placeholder that tells the template engine that the value
 that goes in that place should be obtained from data provided at the time
