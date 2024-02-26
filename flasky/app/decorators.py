@@ -1,6 +1,7 @@
 from functools import wraps
 from flask import abort
 from flask_login import current_user
+from .models import Permission
 """
 In a case which an entire view function needs to be made available only to
 users with certain permissions, a custom decorator can be used.
@@ -22,9 +23,9 @@ def permission_required(permission):
         return decorated_function
     return decorator
 
-def admin_reuired(f):
+def admin_required(f):
     """This a decorator created by the permission required decorator.
     It checks if the current_user is an admin or not.
     It takes in a function f as the next action to occur after the
     check happens."""
-    return permissions_required(Permission.ADMINISTER)(f)
+    return permission_required(Permission.ADMINISTER)(f)

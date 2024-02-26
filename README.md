@@ -368,11 +368,10 @@ test coverage.
 ability to create multiple app instances.The application factory function is
 defined in the app package constructor.
 
-[app](app/__init__.py)
 
 ## Implementing Application Functionality in a Blueprint
 
-* FLask offers a solution for routing at runtime using `blueprints`.
+* FLask offers a solution for routing at runtime using `blueprints`.Z
 
 * The difference is that routes associated with a blueprint are in a dorminant
 state until the blueprint is registered with an application, at which point the
@@ -381,5 +380,4 @@ routes become part of it.
 * To allow for the greatest flexibility, a subpackage inside the app package
 will be created to host the blueprint.
 
-[solution](app/main/__init__.py)
 
