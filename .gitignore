@@ -1,2 +1,5 @@
 myenv/
 __pycache__/
+flasky/env/
+node_modules/
+package-lock.json
